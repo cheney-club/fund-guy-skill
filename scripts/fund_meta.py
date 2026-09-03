@@ -56,6 +56,14 @@ def ensure_masked_photo(src, dst):
     return None
 
 
+def is_active_equity(fund):
+    """真·主动权益。债券型-混合二级/偏债一年持有 含「混合」二字,必须先排除。"""
+    t = (fund or {}).get("type") or ""
+    if any(k in t for k in ("债券", "偏债", "指数", "联接", "货币", "QDII", "FOF")):
+        return False
+    return any(k in t for k in ("偏股", "灵活", "股票", "混合"))
+
+
 def _basic_map(d):
     p = os.path.join(d, "basic.json")
     if not os.path.exists(p):

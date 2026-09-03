@@ -46,14 +46,18 @@ for f in sorted(os.listdir(DIR)):
         hold += json.load(open(os.path.join(DIR, f)))
 qk = lambda s: re.match(r"(\d{4})年(\d)季度", s) and re.sub(r"(\d{4})年(\d)季度.*", r"\1Q\2", s)
 latest = max(qk(r["季度"]) for r in hold)
-cur = [(r["股票代码"], r["股票名称"], r["占净值比例"] or 0)
-       for r in hold if qk(r["季度"]) == latest and len(r["股票代码"]) == 6]
-cur.sort(key=lambda x: -x[2])
-print(f"反查 {latest} 的 {len(cur)} 只 A 股持仓")
+qrows = [r for r in hold if qk(r["季度"]) == latest]
+qrows.sort(key=lambda r: -(r.get("占净值比例") or 0))
+top10 = qrows[:10]
+n_hk = sum(1 for r in top10 if len(str(r.get("股票代码") or "")) != 6)
+cur = [(r["股票代码"], r["股票名称"], r.get("占净值比例") or 0)
+       for r in top10 if len(str(r.get("股票代码") or "")) == 6]
+print(f"反查 {latest} 前十大里 {len(cur)} 只 A 股" + (f"(另 {n_hk} 只港股未反查)" if n_hk else ""))
 
 REPORT_DATES = report_dates(DIR, n=3)
 print(f"反查报告日 {REPORT_DATES}")
 fund_hits = defaultdict(lambda: {"stocks": [], "cap": 0.0})
+used_rd = None
 
 for code, name, w in cur:
     got = False
@@ -80,6 +84,7 @@ for code, name, w in cur:
                 fund_hits[fn]["cap"] += (r["HOLD_MARKET_CAP"] or 0) / 1e8
                 n_active += 1
             print(f"  {name:<8}{rd}: 持有主动基金 {n_active} 只")
+            used_rd = used_rd or rd
             got = True
             break
         time.sleep(0.8)
@@ -91,8 +96,8 @@ ranked = [{"fund": fn, "n": len(set(v["stocks"])), "stocks": sorted(set(v["stock
            "cap_yi": round(v["cap"], 1)}
           for fn, v in fund_hits.items() if len(set(v["stocks"])) >= 3]
 ranked.sort(key=lambda x: (-x["n"], -x["cap_yi"]))
-out = {"period": REPORT_DATES[0], "latest_q": latest,
-       "n_stocks_checked": len(cur), "funds": ranked[:12]}
+out = {"period": used_rd or REPORT_DATES[0], "latest_q": latest,
+       "n_stocks_checked": len(cur), "n_hk_skipped": n_hk, "funds": ranked[:12]}
 json.dump(out, open(os.path.join(DIR, "market_similar.json"), "w"), ensure_ascii=False)
 print(f"\n撞车 ≥3 只的全市场主动基金: {len(ranked)}")
 for x in ranked[:12]:

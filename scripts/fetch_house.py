@@ -11,7 +11,7 @@ import akshare as ak
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code, house_years, index_start, market_periods
+from fund_meta import require_code, house_years, index_start, market_periods, is_active_equity
 
 CODE = require_code()
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -109,7 +109,7 @@ def fetch_company_funds():
     for code, mgrs in fund_mgrs.items():
         t = types.get(code, "")
         nm = fnames.get(code, "")
-        if not any(k in t for k in ("混合", "股票")):
+        if not is_active_equity({"type": t}):
             continue
         if nm.endswith("C") or nm.endswith("E") or nm.endswith("H"):
             continue  # 去重份额类别
@@ -123,6 +123,7 @@ if os.path.exists(_funds_path):
     if _old and "aum" not in _old[0]:
         os.remove(_funds_path)
 funds = cached(_funds_path, fetch_company_funds)
+funds = [f for f in funds if is_active_equity(f)]
 peers = [f for f in funds if not f["self"] and f["code"] != CODE]
 print(f"[3] {COMPANY or '公司未获取'}权益基金 {len(funds)} 只,排除{SELF_MANAGER or '现任'}自管后 {len(peers)} 只")
 

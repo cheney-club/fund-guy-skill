@@ -11,7 +11,7 @@ from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code
+from fund_meta import require_code, is_active_equity
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 HDIR = os.path.join(DIR, "house")
@@ -43,6 +43,16 @@ for f in os.listdir(HDIR):
         if q and w > 0:
             peers_hold[q][fc][r["股票代码"]] = w
             names[r["股票代码"]] = r["股票名称"]
+
+funds_meta = {}
+_fp = os.path.join(HDIR, "funds.json")
+if os.path.exists(_fp):
+    funds_meta = {f["code"]: f for f in json.load(open(_fp))}
+_skip = {c for c, f in funds_meta.items() if not is_active_equity(f)}
+if _skip:
+    for q in list(peers_hold):
+        for fc in [c for c in peers_hold[q] if c in _skip]:
+            del peers_hold[q][fc]
 
 # 对齐本品有持仓、同门也够样本的季度;取最近约 5 年,不写死 2021
 _qs = sorted(q for q in tgt if q in peers_hold and len(peers_hold[q]) >= 8)
@@ -166,7 +176,6 @@ def market_analysis():
 mkt_series = market_analysis()
 
 # ---------- 持仓最像的同门基金(最新期,归一化重合度) ----------
-funds_meta = {f["code"]: f for f in json.load(open(os.path.join(HDIR, "funds.json")))}
 
 def similar_funds():
     if not QS:
@@ -184,6 +193,8 @@ def similar_funds():
             continue
         top_shared = sorted(shared, key=lambda c: -min(tw[c], fw[c]))[:3]
         meta = funds_meta.get(fc, {})
+        if meta and not is_active_equity(meta):
+            continue
         out.append({
             "code": fc, "name": meta.get("name", fc),
             "managers": " ".join(meta.get("managers", [])[:2]),

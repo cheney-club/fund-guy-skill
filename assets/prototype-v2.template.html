@@ -1129,6 +1129,9 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
 // 所有条形图进入视口时展开
 (function(){
   const bars = document.querySelectorAll('[data-w]');
+  const paint = ()=>bars.forEach(b=>{
+    if (b.dataset.w !== undefined) b.style.width = b.dataset.w + '%';
+  });
   const io = new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting){
       e.target.style.width = e.target.dataset.w + '%';
@@ -1136,6 +1139,7 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
     }
   }), {threshold:.2});
   bars.forEach(b=>io.observe(b));
+  setTimeout(paint, 600);
 })();
 
 // 滚入淡入
@@ -1146,6 +1150,7 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
   document.querySelectorAll('.card, .arena, .punchline, .stat, .fac').forEach(el=>{
     el.classList.add('fade-in'); io.observe(el);
   });
+  setTimeout(()=>document.querySelectorAll('.fade-in').forEach(el=>el.classList.add('visible')), 900);
 })();
 
 // 金额滑块

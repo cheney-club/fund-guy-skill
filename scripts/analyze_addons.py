@@ -634,6 +634,42 @@ def build_fund_events(A):
     return evs
 
 
+def build_market_events(A):
+    """指数单日大涨跌,不编新闻标题。每年最多 2 条,宁缺毋滥。"""
+    path = os.path.join(DIR, "csi300.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        rows = json.load(open(path))
+    except Exception:
+        return []
+    found = ((A.get("meta") or {}).get("成立时间") or "")[:10]
+    prev, by_year = None, defaultdict(list)
+    for r in rows:
+        d, c = (r.get("date") or "")[:10], r.get("close")
+        if not d or c is None:
+            continue
+        if found and d < found:
+            prev = c
+            continue
+        if prev:
+            chg = (c / prev - 1) * 100
+            if abs(chg) >= 5:
+                by_year[d[:4]].append((abs(chg), d, chg))
+        prev = c
+    out = []
+    for y in sorted(by_year):
+        xs = sorted(by_year[y], reverse=True)[:2]
+        for _, d, chg in xs:
+            lab = "大跌" if chg < 0 else "大涨"
+            out.append({
+                "date": d, "kind": "market", "auto": True,
+                "title": f"沪深300 单日{lab} {chg:+.1f}%",
+                "source_hint": "csi300.json 日涨跌≥5%",
+            })
+    return out
+
+
 def merge_events(auto, old, A):
     hold_codes = {str(s.get("code") or "") for s in (A.get("replay") or {}).get("stocks") or []}
     hold_codes.discard("")
@@ -670,11 +706,13 @@ def write_events(A):
             old = json.load(open(path))
         except Exception:
             old = []
-    auto = build_fund_events(A)
+    auto = build_fund_events(A) + build_market_events(A)
     merged = merge_events(auto, old, A)
     json.dump(merged, open(path, "w"), ensure_ascii=False, indent=2)
     n_fund = sum(1 for e in merged if e.get("kind") == "fund")
-    print(f"情景事件: 本品 {n_fund} 条 + 保留行业/宏观 {len(merged) - n_fund} 条 → {path}")
+    n_mkt = sum(1 for e in merged if e.get("kind") == "market" and e.get("auto"))
+    n_keep = len(merged) - n_fund - n_mkt
+    print(f"情景事件: 本品 {n_fund} 条 + 指数大涨跌 {n_mkt} 条 + 保留行业/宏观 {n_keep} 条 → {path}")
 
 
 # ---------- 5. 造神九项(本品数据筛,动机最多较强推断) ----------

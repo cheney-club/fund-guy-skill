@@ -29,7 +29,7 @@ Thanks to the [Linux.do](https://linux.do/) community for their support.
 
 One sentence: give it a mutual fund code, and the Agent digs up every trade the manager made over 8 years, back-tests each entry and exit against what actually happened in the following 12 months, then produces a 700KB self-contained interactive report — animated K-line battle replays, trade autopsies, an independence trial, and a fame-machine background check.
 
-**Live demo**: Xingquan Heyi (163417) → [open it](https://wbh604.github.io/fund-guy-skill/assets/fund-163417.html) (self-contained HTML, works offline; the demo masks the manager's name and photo)
+**Live demo**: Xingquan Heyi (163417) → [open it](https://wbh604.github.io/fund-guy-skill/assets/fund-163417.html) (self-contained HTML, works offline; the demo masks the manager's name and photo). **Do not preview gist HTML via htmlpreview.github.io** — that proxy often skips inline scripts, so the score looks like 0 and the K-line looks empty even when the file is complete.
 
 ## Why This Exists
 
@@ -290,6 +290,13 @@ All raw data is cached under `.cache/` for evidence (not committed), with API na
 ## Changelog
 
 Newest first. Only changes a user would notice.
+
+### 2026-09-03 · Preview-shell and sibling/collision filters
+
+- Open the local HTML in a real browser. Do not preview gist files via htmlpreview.github.io — that proxy often skips scripts, so the score looks like 0 and the K-line looks empty.
+- Market-collision reverse lookup uses the latest top-10 A-shares, not the full semi-annual book.
+- Sibling-fund controls drop bond / secondary-bond / index products even when the type string contains 混合.
+- K-line market events auto-mark CSI 300 single-day moves ≥5%. Manager photos are validated as real images.
 
 ### 2026-08-14 · Fully automatic per selected fund
 

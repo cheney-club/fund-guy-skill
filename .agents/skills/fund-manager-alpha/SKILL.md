@@ -18,7 +18,7 @@ python run.py <基金代码>              # 一键:取数 → 分析 → 出报�
 python run.py <基金代码> --skip-fetch # 已有 .cache 数据时
 ```
 
-产出:`assets/fund-<code>.html`(自包含单文件,离线可看可分享)。
+产出:`assets/fund-<code>.html`(自包含单文件,离线可看可分享)。请用浏览器直接打开本地文件;不要用 htmlpreview.github.io / gist 在线预览,那些页面经常不跑脚本,分数和 K 线会显示成空的。
 
 参考脚本在仓库根 `scripts/`(fetch → analyze → build,README 有逐条命令)。
 接口失效时不要死修脚本,按主文档的三层取数模型(公开 API → 浏览器抓取 → 请用户登录)自行补数。

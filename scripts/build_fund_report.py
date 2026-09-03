@@ -553,7 +553,7 @@ if hs:
     # 全市场撞车榜(与同门榜同款:进度条 + 重复率)
     mkt_sim_rows = ""
     if msim and msim.get("funds"):
-        _nmax = msim["n_stocks_checked"]
+        _nmax = msim["n_stocks_checked"] or 1
         for x in msim["funds"][:8]:
             rate = x["n"] / _nmax * 100
             chips = "".join(f'<span class="rgrade" style="padding:2px 8px;font-size:10.5px">{n}</span>' for n in x["stocks"][:4])
@@ -565,6 +565,12 @@ if hs:
             </div>"""
     else:
         mkt_sim_rows = '<p style="font-size:12px;color:var(--muted)">全市场反查未运行</p>'
+    _hk = (msim or {}).get("n_hk_skipped") or 0
+    _msim_cap = (
+        f'反查他 {(msim or {}).get("n_stocks_checked") or 0} 只 A 股重仓的基金持有人'
+        + (f'(前十大另有 {_hk} 只港股,东财持有人接口未覆盖)' if _hk else "")
+        + f' · 已剔除指数/ETF与同门 {company_short} · {(msim or {}).get("period") or ""}'
+    )
 
     # 第二把尺子:全市场
     mk = hs.get("market")
@@ -690,7 +696,7 @@ if hs:
     </div>
     <div class="card">
       <span class="lbl">全市场撞车榜 · 也同时持有他多只重仓的主动基金</span>
-      <p style="font-size:11px;color:var(--ghost);margin-top:4px">反查他 {msim["n_stocks_checked"] if msim else 7} 只 A 股重仓的基金持有人 · 已剔除指数/ETF与同门 {company_short} · {msim["period"] if msim else ""}</p>
+      <p style="font-size:11px;color:var(--ghost);margin-top:4px">{_msim_cap}</p>
       <div style="margin-top:10px">{mkt_sim_rows}</div>
     </div>
   </div>
@@ -990,7 +996,7 @@ if _co.get("events") or _hf.get("rows"):
     hf_rows = ""
     ZONE_LAB = {"high": "高位", "low": "低位", "mid": "中位", "mixed": "混杂", "unknown": "—"}
     for r in _hf.get("rows") or []:
-        tag = (r.get("tags") or ["—"])[0]
+        tag = (r.get("tags") or ["本期无特殊信号"])[0]
         zc = "var(--danger)" if r.get("zone")=="high" else ("var(--ok)" if r.get("zone")=="low" else "var(--ghost)")
         hf_rows += f"""<div style="display:grid;grid-template-columns:86px 70px 70px 1fr 72px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:12.5px">
           <b>{r['date'][:7]}</b>
@@ -1078,15 +1084,18 @@ else:
         _ck_miss("利益冲突 —— 披露有限,只能记「未发现」"),
     ])
 
+_wcss = "".join(f'[data-w="{i}"]{{width:{i}%}}' for i in range(101))
+
 html = f'''<!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>基佬skill · {mgr_name} · {fund_name}(真实数据)</title>
-<style>{css}</style>
+<style>{css}{_wcss}</style>
 </head>
 <body>
+<noscript><div style="margin:16px 24px;padding:14px 18px;border:2px solid var(--warn);background:var(--warn-tint);border-radius:12px;font-size:14px">请用浏览器直接打开本 HTML 文件。htmlpreview.github.io / gist 在线预览经常不跑脚本,分数、进度条和 K 线会显示成空的 —— 通常不是数据没取到。</div></noscript>
 <div class="mock-tag" style="background:var(--ok)">真实公开数据</div>
 <button class="theme-btn" id="themeBtn" title="切换主题">🌙</button>
 
@@ -1141,7 +1150,7 @@ html = f'''<!DOCTYPE html>
 
     <div class="card" style="text-align:center">
       <span class="lbl">总评分 · 评的是行为,不是净值</span>
-      <div class="score-giant" data-count="{ab["total_score"]}">0</div>
+      <div class="score-giant" data-count="{ab["total_score"]}">{ab["total_score"]}</div>
       <div style="margin-top:14px;text-align:left">
         <div class="bar-row" style="grid-template-columns:96px 1fr 40px;padding:3px 0">
           <span class="k" style="font-size:12px">择时能力 ⚠</span>
@@ -1252,7 +1261,7 @@ html = f'''<!DOCTYPE html>
         <div class="rp-meta">
           <div>
             <span class="rp-rank" id="rpRank">第 1 名</span>
-            <h2 id="rpName">—</h2>
+            <h2 id="rpName">{(A.get("replay") or {}).get("stocks") and A["replay"]["stocks"][0].get("name") or "—"}</h2>
             <span class="rp-code" id="rpCode"></span>
           </div>
           <div class="rp-amt up" id="rpAmt"></div>
@@ -1513,7 +1522,7 @@ html = f'''<!DOCTYPE html>
 <section id="s6" class="sec">
   <div class="sec-head">
     <span class="sec-num">07</span><span class="sec-ti">怎么用</span>
-    <span class="sec-sub">判决参数 · 未跑模块</span><span class="sec-line"></span>
+    <span class="sec-sub">判决参数 · 证据缺口</span><span class="sec-line"></span>
   </div>
 
   <div class="grid g2">
@@ -1531,12 +1540,12 @@ html = f'''<!DOCTYPE html>
     </div>
 
     <div class="card">
-      <span class="lbl">证据缺口 · 仍未覆盖(已从 6 项缩到 2 项)</span>
+      <span class="lbl">还没自动化的两步(不是这次取数失败)</span>
       <div class="trig" style="margin-top:14px">
         <span>门派识别(需持仓聚类)</span>
         <span>Idea 先手/跟随(需同门逐季对齐)</span>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin-top:12px">独立战争/多因子/抄作业/机构画像/到手率/造神检测/闸门时间轴/一车多牌/开门批次/年底冲排名已补跑。按 SKILL 硬规则,剩余缺口继续在报告中明示。</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px">门派识别和 Idea 先手仍要 Agent 读持仓聚类,不是这次接口没取到。独立战争/多因子/抄作业/机构画像/到手率/造神检测/闸门时间轴/一车多牌/开门批次/年底冲排名已按本品数据跑过。</p>
     </div>
   </div>
 

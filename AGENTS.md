@@ -17,7 +17,7 @@ python run.py <基金代码>               # 完整管线:取数 → 分析 → 
 python run.py <基金代码> --no-browser  # 无 GUI 环境
 ```
 
-产出 `assets/fund-<code>.html`。`scripts/` 下是一次真实运行(163417)的参考实现,
+产出 `assets/fund-<code>.html`。请用浏览器直接打开这个本地文件,不要丢到 htmlpreview.github.io / gist 在线预览(那些页面经常不跑脚本,分数和 K 线会显示成空的)。`scripts/` 下是一次真实运行(163417)的参考实现,
 接口失效时按 SKILL 的三层取数模型自行补数,不要死修脚本。
 
 ## 不可违反的三条

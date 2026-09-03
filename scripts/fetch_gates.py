@@ -13,7 +13,7 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code
+from fund_meta import require_code, is_active_equity
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 os.makedirs(DIR, exist_ok=True)
@@ -190,10 +190,7 @@ def pick_peers():
     for f in funds:
         if f.get("self") or str(f.get("code")) == CODE:
             continue
-        t = f.get("type") or ""
-        if any(k in t for k in ("债券", "指数", "联接", "偏债")):
-            continue
-        if not any(k in t for k in ("偏股", "灵活", "股票", "混合")):
+        if not is_active_equity(f):
             continue
         # 规模大的更可能覆盖本品早期闸门窗口;禁止按兴全 163/340 代码写死
         out.append({"code": f["code"], "name": f["name"], "managers": f.get("managers"),
