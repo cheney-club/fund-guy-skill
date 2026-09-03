@@ -1,8 +1,8 @@
 """全市场今年收益 TOP10 主动基金 vs 目标经理当前持仓的同步度。
 
 口径:
-- 排行来自东财开放式基金排行(今年来),剔除指数/ETF/联接/QDII/FOF 等非主动选股产品
-- 同一基金多个份额(A/C/E)只留今年来最高的一个
+- 排行来自东财开放式基金排行(今年来),用基金类型筛真·主动权益(不靠简称猜债券/偏债)
+- 同一基金多个份额(A/C/E)只留今年来最高的一个;不跟自己比
 - 同步度 = 对方最新前十大里,与他当前前十大同名的只数 / 10
 """
 import json
@@ -16,48 +16,48 @@ import akshare as ak
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code, latest_hold_q
+from fund_meta import require_code, latest_top_holdings, is_active_equity
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 
-# 用本品持仓,不依赖 analysis.json(管线里本脚本在 analyze 之前)
-def qkey(s):
-    m = re.match(r"(\d{4})年(\d)季度", s or "")
-    return f"{m.group(1)}Q{m.group(2)}" if m else None
-
-hold = []
-for f in sorted(os.listdir(DIR)):
-    if f.startswith("hold_") and f.endswith(".json") and f[5:9].isdigit():
-        hold += json.load(open(os.path.join(DIR, f)))
-latest = latest_hold_q(DIR)
+latest, top = latest_top_holdings(DIR, 10)
 if not latest:
     print("本品持仓未获取,跳过热榜")
     sys.exit(0)
-cur = [r for r in hold if qkey(r.get("季度")) == latest]
-cur.sort(key=lambda r: -(r.get("占净值比例") or 0))
-my_names = {r["股票名称"] for r in cur[:10]}
+my_names = {r["股票名称"] for r in top}
 print(f"他的当前前十大({latest}): {sorted(my_names)}")
+
+names_df = ak.fund_name_em()
+types = dict(zip(names_df["基金代码"].astype(str), names_df["基金类型"]))
 
 rank = ak.fund_open_fund_rank_em(symbol="全部")
 rank = rank.dropna(subset=["今年来"])
-BAD = re.compile(r"指数|ETF|联接|QDII|FOF|LOF联接|增强|沪深300|中证|标普|纳斯达克|恒生")
+BAD = re.compile(
+    r"指数|ETF|联接|QDII|FOF|LOF联接|增强|沪深300|中证|标普|纳斯达克|恒生|"
+    r"债券|偏债|固收|货币|理财|可转债"
+)
 rank = rank[~rank["基金简称"].str.contains(BAD)]
 rank = rank[rank["基金简称"].str.contains("混合|股票")]
 rank = rank.sort_values("今年来", ascending=False)
 
 # 去重份额:去掉尾缀 A/B/C/E/D 后的名字相同视为同一只
-seen, top = set(), []
+seen, top_rows = set(), []
 for _, r in rank.iterrows():
+    code = str(r["基金代码"]).zfill(6)
+    if code == CODE:
+        continue
+    if not is_active_equity({"type": types.get(code, "")}):
+        continue
     base = re.sub(r"[ABCDE]$", "", r["基金简称"])
     if base in seen:
         continue
     seen.add(base)
-    top.append(r)
-    if len(top) >= 10:
+    top_rows.append(r)
+    if len(top_rows) >= 10:
         break
 
 out = []
-for r in top:
+for r in top_rows:
     code, name, ytd = r["基金代码"], r["基金简称"], float(r["今年来"])
     shared, latest_q = [], ""
     try:
@@ -71,8 +71,12 @@ for r in top:
                 break
         if h is not None and len(h):
             latest_q = sorted(h["季度"].unique())[-1]
-            top10 = h[h["季度"] == latest_q].nsmallest(10, "序号")
-            shared = [n for n in top10["股票名称"] if n in my_names]
+            qdf = h[h["季度"] == latest_q]
+            if "占净值比例" in qdf.columns:
+                peer_top = qdf.sort_values("占净值比例", ascending=False).head(10)
+            else:
+                peer_top = qdf.nsmallest(10, "序号")
+            shared = [n for n in peer_top["股票名称"] if n in my_names]
     except Exception as e:
         print(f"  {name} 持仓抓取失败: {e}")
     out.append({"code": code, "name": name, "ytd": ytd,

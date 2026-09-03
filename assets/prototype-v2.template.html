@@ -1084,14 +1084,21 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
 
 <script>/*__LWCHARTS__*/</script>
 <script>
+// htmlpreview / gist iframe 经常跑不完 rAF 和 IntersectionObserver,动画会把分数写成 0、卡片藏起来
+const PAGE_INERT = (()=>{ try { return window.top !== window.self; } catch (e) { return true; } })();
+
 // 主题切换
 (function(){
   const btn = document.getElementById('themeBtn'), root = document.documentElement;
+  if(!btn) return;
   const paint = t=>{ root.dataset.theme=t; btn.textContent = t==='dark'?'🌙':'☀️'; };
-  paint(localStorage.getItem('fmTheme') || 'dark');
+  let saved = 'dark';
+  try { saved = localStorage.getItem('fmTheme') || 'dark'; } catch (e) {}
+  paint(saved);
   btn.onclick = ()=>{
     const next = root.dataset.theme==='dark' ? 'light' : 'dark';
-    paint(next); localStorage.setItem('fmTheme', next);
+    paint(next);
+    try { localStorage.setItem('fmTheme', next); } catch (e) {}
   };
 })();
 
@@ -1115,7 +1122,11 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
 (function(){
   const el = document.querySelector('.score-giant');
   if(!el) return;
-  const target = +el.dataset.count, dur = 1400;
+  const target = +el.dataset.count;
+  if(!Number.isFinite(target)) return;
+  el.textContent = target;
+  if(PAGE_INERT) return;
+  const dur = 1400;
   let t0 = null;
   const step = ts=>{
     if(!t0) t0 = ts;
@@ -1132,6 +1143,7 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
   const paint = ()=>bars.forEach(b=>{
     if (b.dataset.w !== undefined) b.style.width = b.dataset.w + '%';
   });
+  if(PAGE_INERT){ paint(); return; }
   const io = new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting){
       e.target.style.width = e.target.dataset.w + '%';
@@ -1144,12 +1156,12 @@ td.v{font-weight:900;font-size:15px;white-space:nowrap;text-align:right}
 
 // 滚入淡入
 (function(){
+  const nodes = document.querySelectorAll('.card, .arena, .punchline, .stat, .fac');
+  if(PAGE_INERT) return;
   const io = new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting) e.target.classList.add('visible');
   }), {threshold:.08});
-  document.querySelectorAll('.card, .arena, .punchline, .stat, .fac').forEach(el=>{
-    el.classList.add('fade-in'); io.observe(el);
-  });
+  nodes.forEach(el=>{ el.classList.add('fade-in'); io.observe(el); });
   setTimeout(()=>document.querySelectorAll('.fade-in').forEach(el=>el.classList.add('visible')), 900);
 })();
 

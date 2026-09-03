@@ -531,7 +531,7 @@ if hs:
         top_card = f"""
   <div class="card" style="margin-top:var(--gap);border-color:var(--warn)">
     <span class="lbl" style="color:var(--warn)">今年全市场最猛的 10 只 · 跟他的持仓同步度</span>
-    <p style="font-size:11px;color:var(--ghost);margin-top:4px">开放式基金今年收益榜(截至 {topf["asof"]}) · 已剔除指数/联接/QDII与重复份额 · 同步度 = 对方最新前十大与他前十大同名只数</p>
+    <p style="font-size:11px;color:var(--ghost);margin-top:4px">开放式基金今年收益榜(截至 {topf["asof"]}) · 已剔除指数/联接/QDII/债券偏债及本基金自身 · 同步度 = 对方最新前十大与他前十大同名只数</p>
     <div style="margin-top:10px">{top_rows}</div>
     <p style="text-align:center;font-size:16px;font-weight:900;margin-top:14px">{top_verdict}</p>
   </div>"""

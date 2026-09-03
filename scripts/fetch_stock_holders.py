@@ -12,22 +12,17 @@ import akshare as ak
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code, report_dates
+from fund_meta import require_code, latest_top_holdings, report_dates
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 
-# 最新一期前十大持仓
-hold = []
-for f in sorted(os.listdir(DIR)):
-    if f.startswith("hold_2"):
-        hold += json.load(open(os.path.join(DIR, f)))
+latest, top = latest_top_holdings(DIR, 10)
+if not latest:
+    print("本品持仓未获取,跳过十大流通股东")
+    sys.exit(0)
+cur = [(r["股票代码"], r["股票名称"]) for r in top]
+print(f"查前十大流通股东 {latest} {len(cur)} 只(不拿中报/年报整本持仓)")
 
-def qkey(s):
-    m = re.match(r"(\d{4})年(\d)季度", s)
-    return f"{m.group(1)}Q{m.group(2)}"
-
-latest = max(qkey(r["季度"]) for r in hold)
-cur = [(r["股票代码"], r["股票名称"]) for r in hold if qkey(r["季度"]) == latest]
 
 def em_symbol(code):
     if len(code) == 5:

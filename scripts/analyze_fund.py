@@ -12,7 +12,7 @@ from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code
+from fund_meta import require_code, is_active_equity, is_house_peer
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 KDIR = os.path.join(DIR, "kline")
@@ -217,13 +217,23 @@ HOUSE_DIR = os.path.join(DIR, "house")
 
 peer_holds = defaultdict(int)   # code -> 同门持有基金数(最新期前十大口径)
 peer_total = 0
+_house_meta = {}
+_hfp = os.path.join(HOUSE_DIR, "funds.json")
+if os.path.exists(_hfp):
+    _house_meta = {f["code"]: f for f in json.load(open(_hfp))}
 if os.path.isdir(HOUSE_DIR):
-    year = "20" + latest_q_all[2:4] if len(latest_q_all) == 6 else latest_q_all[:4]
     for f in os.listdir(HOUSE_DIR):
-        if not f.startswith("hold_") or not f.endswith(f"_{latest_q_all[:4]}.json"):
+        hm = re.match(rf"hold_(\w+)_{re.escape(latest_q_all[:4])}\.json", f)
+        if not hm:
+            continue
+        fc = hm.group(1)
+        meta = _house_meta.get(fc)
+        if not is_house_peer(meta or {"code": fc}, CODE):
             continue
         rows = json.load(open(os.path.join(HOUSE_DIR, f)))
-        codes_q = {r["股票代码"] for r in rows if qkey(r["季度"]) == latest_q_all}
+        qrows = [r for r in rows if qkey(r.get("季度")) == latest_q_all]
+        qrows.sort(key=lambda r: -(r.get("占净值比例") or 0))
+        codes_q = {r["股票代码"] for r in qrows[:10]}
         if codes_q:
             peer_total += 1
             for c in codes_q:

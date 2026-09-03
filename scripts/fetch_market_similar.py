@@ -11,7 +11,7 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code, report_dates
+from fund_meta import require_code, report_dates, latest_top_holdings
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 
@@ -39,16 +39,7 @@ def _company_pat():
 
 SELF_CO = _company_pat()
 
-# 当前持仓(A股)
-hold = []
-for f in sorted(os.listdir(DIR)):
-    if f.startswith("hold_2"):
-        hold += json.load(open(os.path.join(DIR, f)))
-qk = lambda s: re.match(r"(\d{4})年(\d)季度", s) and re.sub(r"(\d{4})年(\d)季度.*", r"\1Q\2", s)
-latest = max(qk(r["季度"]) for r in hold)
-qrows = [r for r in hold if qk(r["季度"]) == latest]
-qrows.sort(key=lambda r: -(r.get("占净值比例") or 0))
-top10 = qrows[:10]
+latest, top10 = latest_top_holdings(DIR, 10)
 n_hk = sum(1 for r in top10 if len(str(r.get("股票代码") or "")) != 6)
 cur = [(r["股票代码"], r["股票名称"], r.get("占净值比例") or 0)
        for r in top10 if len(str(r.get("股票代码") or "")) == 6]

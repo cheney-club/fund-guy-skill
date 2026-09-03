@@ -64,6 +64,40 @@ def is_active_equity(fund):
     return any(k in t for k in ("偏股", "灵活", "股票", "混合"))
 
 
+def qkey(s):
+    m = re.match(r"(\d{4})年(\d)季度", s or "")
+    return f"{m.group(1)}Q{m.group(2)}" if m else None
+
+
+def load_hold_rows(d):
+    rows = []
+    if not os.path.isdir(d):
+        return rows
+    for f in sorted(os.listdir(d)):
+        if f.startswith("hold_") and f.endswith(".json") and f[5:9].isdigit():
+            rows += json.load(open(os.path.join(d, f)))
+    return rows
+
+
+def latest_top_holdings(d, n=10):
+    """最新季报季的前 n 大持仓(按占净值比例)。不拿中报/年报整本当重仓。"""
+    latest = latest_hold_q(d)
+    if not latest:
+        return latest, []
+    qrows = [r for r in load_hold_rows(d) if qkey(r.get("季度")) == latest]
+    qrows.sort(key=lambda r: -(r.get("占净值比例") or 0))
+    return latest, qrows[:n]
+
+
+def is_house_peer(fund, code):
+    """独立战争对照组:真·权益、非本品、非现任经理自管的其他产品。"""
+    if not fund or str(fund.get("code") or "") == str(code):
+        return False
+    if fund.get("self"):
+        return False
+    return is_active_equity(fund)
+
+
 def _basic_map(d):
     p = os.path.join(d, "basic.json")
     if not os.path.exists(p):

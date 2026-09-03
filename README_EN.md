@@ -293,9 +293,9 @@ Newest first. Only changes a user would notice.
 
 ### 2026-09-03 · Preview-shell and sibling/collision filters
 
-- Open the local HTML in a real browser. Do not preview gist files via htmlpreview.github.io — that proxy often skips scripts, so the score looks like 0 and the K-line looks empty.
+- Open the local HTML in a real browser. Do not preview gist files via htmlpreview.github.io — scripts often fail there; score/progress bars fall back without JS, and iframe previews skip animations that hide content.
 - Market-collision reverse lookup uses the latest top-10 A-shares, not the full semi-annual book.
-- Sibling-fund controls drop bond / secondary-bond / index products even when the type string contains 混合.
+- Sibling controls drop bond/index products and exclude the lead manager's other self-managed funds (K-line peer counts match House Consensus).
 - K-line market events auto-mark CSI 300 single-day moves ≥5%. Manager photos are validated as real images.
 
 ### 2026-08-14 · Fully automatic per selected fund

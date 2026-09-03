@@ -11,7 +11,7 @@ from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fund_meta import require_code, is_active_equity
+from fund_meta import require_code, is_active_equity, is_house_peer
 CODE = require_code()
 DIR = os.path.join(ROOT, ".cache", f"fund_{CODE}")
 HDIR = os.path.join(DIR, "house")
@@ -29,7 +29,12 @@ for f in sorted(os.listdir(DIR)):
             if q and (r["占净值比例"] or 0) > 0:
                 tgt[q][r["股票代码"]] = r["占净值比例"]
 
-# 同门基金持仓: q -> fund -> {stock: w}
+funds_meta = {}
+_fp = os.path.join(HDIR, "funds.json")
+if os.path.exists(_fp):
+    funds_meta = {f["code"]: f for f in json.load(open(_fp))}
+
+# 同门基金持仓: q -> fund -> {stock: w}(不含本品与现任经理自管产品)
 peers_hold = defaultdict(lambda: defaultdict(dict))
 names = {}
 for f in os.listdir(HDIR):
@@ -37,6 +42,8 @@ for f in os.listdir(HDIR):
     if not m:
         continue
     fc = m.group(1)
+    if not is_house_peer(funds_meta.get(fc, {"code": fc}), CODE):
+        continue
     for r in json.load(open(os.path.join(HDIR, f))):
         q = qkey(r["季度"])
         w = r["占净值比例"] or 0
@@ -44,11 +51,7 @@ for f in os.listdir(HDIR):
             peers_hold[q][fc][r["股票代码"]] = w
             names[r["股票代码"]] = r["股票名称"]
 
-funds_meta = {}
-_fp = os.path.join(HDIR, "funds.json")
-if os.path.exists(_fp):
-    funds_meta = {f["code"]: f for f in json.load(open(_fp))}
-_skip = {c for c, f in funds_meta.items() if not is_active_equity(f)}
+_skip = {c for c, f in funds_meta.items() if not is_house_peer(f, CODE)}
 if _skip:
     for q in list(peers_hold):
         for fc in [c for c in peers_hold[q] if c in _skip]:
@@ -193,7 +196,7 @@ def similar_funds():
             continue
         top_shared = sorted(shared, key=lambda c: -min(tw[c], fw[c]))[:3]
         meta = funds_meta.get(fc, {})
-        if meta and not is_active_equity(meta):
+        if not is_house_peer(meta or {"code": fc}, CODE):
             continue
         out.append({
             "code": fc, "name": meta.get("name", fc),
